@@ -8,7 +8,7 @@ def main():
 
     print("XGBoost")
     XGModelMain = XGBoostModel(handler.data.drop(columns=['cardio','id']), handler.data['cardio'])
-    # XGModelMain.cross_validate(k=10)
+    XGModelMain.cross_validate(k=10)
 
     print("Logistic Regression")
     LRModelMain = LRModel(x_train, x_test, y_train, y_test)
@@ -16,7 +16,7 @@ def main():
 
     print("KNN")
     KNNModelMain = KNNModel(x_train, x_test, y_train, y_test)
-    # KNNModelMain.find_best_parameter()
+    KNNModelMain.find_best_parameter()
 
 
 if __name__ == "__main__":
