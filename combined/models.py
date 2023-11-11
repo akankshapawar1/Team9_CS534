@@ -1,10 +1,12 @@
+import joblib
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score, GridSearchCV
 from tqdm import tqdm
 from xgboost import XGBClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import accuracy_score, f1_score
-from sklearn import metrics
+from sklearn.metrics import accuracy_score, f1_score, make_scorer
+import numpy as np
+from joblib import load
 
 
 class XGBoostModel:
@@ -27,40 +29,36 @@ class XGBoostModel:
     def hyperparameter_tuning(self, k=10):
         param_grid = {
             'max_depth': [3, 4, 5],
+            # 'max_depth': [5, 6, 7],
             'subsample': [0.6, 0.8, 1.0],
             'learning_rate': [0.01, 0.02, 0.05, 0.1]
         }
         model = XGBClassifier()
+        scoring = {'accuracy': make_scorer(accuracy_score),
+                   'f1_score': make_scorer(f1_score)}
         grid_search = GridSearchCV(estimator=model, param_grid=param_grid,
-                                   scoring='accuracy', cv=k, verbose=1, n_jobs=-1)
+                                   scoring=scoring, refit='accuracy', cv=k, verbose=1, n_jobs=-1)
         grid_search.fit(self.x_data, self.y_data)
         print(f"Best accuracy: {grid_search.best_score_} using {grid_search.best_params_}")
-        return grid_search.best_estimator_
+        # return grid_search.best_estimator_
 
+        # Save the best model
+        best_model = grid_search.best_estimator_
+        joblib.dump(best_model, 'saved_models/best_xgboost_model.pkl')
+        print("Best model saved as best_xgboost_model.pkl")
 
-class KNNModel:
-    def __init__(self, x_train, x_test, y_train, y_test):
-        self.x_train = x_train
-        self.y_train = y_train
-        self.x_test = x_test
-        self.y_test = y_test
+        return best_model
 
-    def train(self, average_method='macro'):
-        f1_scores = {}
-        for i in range(1, 101):
-            knn_classifier = KNeighborsClassifier(n_neighbors=i)
-            knn_classifier.fit(self.x_train, self.y_train)
-            predictions = knn_classifier.predict(self.x_test)
-            f1 = f1_score(self.y_test, predictions, average=average_method)
-            f1_scores[i] = f1
-            # print(f'Neighbors: {i}, F1 Score: {f1:.4f}')
-        return f1_scores
+    def test_best_model(self, x_test, y_test):
+        model_path = 'saved_models/best_xgboost_model.pkl'
+        loaded_model = load(model_path)
+        predictions = loaded_model.predict(x_test)
 
-    def find_best_parameter(self, average_method='macro'):
-        f1_scores = self.train(average_method)
-        best_n = max(f1_scores, key=f1_scores.get)
-        print(f'Best number of neighbors: {best_n} with F1 Score: {f1_scores[best_n]:.4f}')
-        return best_n
+        accuracy = accuracy_score(y_test, predictions)
+        print(f'Accuracy on test with best paras : {accuracy:.4f}')
+
+        f1 = f1_score(y_test, predictions, average='binary')  # Use 'binary' for binary classification
+        print(f'F1 Score on test with best paras : {f1:.4f}')
 
 
 class LRModel:
@@ -70,13 +68,77 @@ class LRModel:
         self.x_test = x_test
         self.y_test = y_test
 
-    def train(self):
-        logreg = LogisticRegression(solver='liblinear', penalty='l2', C=1.0)
-        # logreg.fit(self.x_train[['ap_hi', 'ap_lo', 'cholesterol', 'gluc', 'smoke', 'active']], self.y_train)
-        # y_pred = logreg.predict(self.x_test[['ap_hi', 'ap_lo', 'cholesterol', 'gluc', 'smoke', 'active']])
-        # Accuracy: 0.72 f1_score: 0.69
-        logreg.fit(self.x_train, self.y_train)
-        y_pred = logreg.predict(self.x_test)
-        # Accuracy: 0.71 f1_score: 0.70
-        print('Accuracy: %.2f' % metrics.accuracy_score(self.y_test, y_pred))
-        print('f1_score: %.2f' % metrics.f1_score(self.y_test, y_pred))
+    def hyper_parameter_tuning(self, k=10):
+        param_grid = {
+            'solver': ['liblinear'],
+            'penalty': ['l2'],
+            'C': [100, 10, 1.0, 0.1, 0.01]
+        }
+        logreg = LogisticRegression()
+        scoring = {'accuracy': make_scorer(accuracy_score),
+                   'f1_score': make_scorer(f1_score)}
+        grid_search = GridSearchCV(logreg, param_grid, scoring=scoring, refit='accuracy', cv=k, verbose=1, n_jobs=-1)
+        grid_search.fit(self.x_train[['age', 'ap_hi', 'ap_lo', 'cholesterol', 'gluc', 'smoke', 'active']], self.y_train)
+
+        print(f"Best accuracy: {grid_search.best_score_} using {grid_search.best_params_}")
+
+        # Save the best model
+        best_model = grid_search.best_estimator_
+        joblib.dump(best_model, 'best_logistic_regression_model.pkl')
+        print("Best model saved as best_logistic_regression_model.pkl")
+
+    def test_best_model(self):
+        model_path = 'best_logistic_regression_model.pkl'
+        loaded_model = load(model_path)
+        predictions = loaded_model.predict(
+            self.x_test[['age', 'ap_hi', 'ap_lo', 'cholesterol', 'gluc', 'smoke', 'active']])
+
+        accuracy = accuracy_score(self.y_test, predictions)
+        print(f'Accuracy on test with best paras : {accuracy:.4f}')
+
+        f1 = f1_score(self.y_test, predictions, average='binary')
+        print(f'F1 Score on test with best paras : {f1:.4f}')
+
+
+class KNNModel:
+    def __init__(self, x_train, x_test, y_train, y_test):
+        self.x_train = x_train
+        self.y_train = y_train
+        self.x_test = x_test
+        self.y_test = y_test
+
+    def hyper_parameter_tuning(self, average_method='binary'):
+        param_grid = {'n_neighbors': np.arange(1, 11),
+                      'weights': ['uniform', 'distance'],
+                      'algorithm': ['auto', 'ball_tree', 'kd_tree', 'brute'],
+                      'p': [1, 2]}
+        knn = KNeighborsClassifier()
+        grid_search = GridSearchCV(knn, param_grid, scoring=make_scorer(f1_score, average=average_method), cv=10,
+                                 verbose=1, n_jobs=-1)
+        '''scoring = {'accuracy': make_scorer(accuracy_score),
+                   'f1_score': make_scorer(f1_score, average=average_method, zero_division=1)}
+        grid_search = GridSearchCV(knn, param_grid, scoring=scoring, refit='f1_score', cv=10, verbose=1, n_jobs=-1, error_score='raise')'''
+        grid_search.fit(self.x_train, self.y_train)
+
+        best_model = grid_search.best_estimator_
+        best_params = grid_search.best_params_
+        best_score = grid_search.best_score_
+
+        print(f"Best F1 Score: {best_score:.4f} with parameters: {best_params}")
+
+        # Save the best model
+        joblib.dump(best_model, 'best_knn_model.pkl')
+        print("Best model saved as best_knn_model.pkl")
+
+        return best_model
+
+    def test_best_model(self):
+        model_path = 'best_knn_model.pkl'
+        loaded_model = load(model_path)
+        predictions = loaded_model.predict(self.x_test)
+
+        accuracy = accuracy_score(self.y_test, predictions)
+        print(f'Accuracy on test with best paras : {accuracy:.4f}')
+
+        f1 = f1_score(self.y_test, predictions, average='binary')
+        print(f'F1 Score on test with best paras : {f1:.4f}')

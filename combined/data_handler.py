@@ -12,10 +12,12 @@ class DataHandler:
 
     @staticmethod
     def load_data(filepath):
-        return pd.read_csv(filepath, delimiter=';')
+        df = pd.read_csv(filepath, delimiter=';')
+        df = df.dropna()
+        print(df.shape[0])
+        return df
 
     def train_test_split(self, test_size=0.2, random_state=42):
-        # x = self.data.drop('cardio', axis=1)
         x = self.data.drop(columns=['cardio', 'id'])
         y = self.data['cardio']
         self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(x, y, test_size=test_size,
