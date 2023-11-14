@@ -1,6 +1,7 @@
+from sklearn.ensemble import VotingClassifier
+from sklearn.metrics import accuracy_score
 from data_handler import DataHandler
-from models import XGBoostModel, LRModel, KNNModel
-import pandas as pd
+from models import XGBoostModel, LRModel, KNNModel, RandomForest
 
 
 def main():
@@ -9,23 +10,53 @@ def main():
 
     print("XGBoost")
     XGModelMain = XGBoostModel(x_train, y_train)
-    XGModelMain.hyperparameter_tuning()
-    XGModelMain.test_best_model(x_test, y_test)
+    best_xgb, score_xgb = XGModelMain.hyperparameter_tuning()
+    # XGModelMain.test_best_model(x_test, y_test)
 
     print("Logistic Regression")
     LRModelMain = LRModel(x_train, x_test, y_train, y_test)
-    LRModelMain.hyper_parameter_tuning()
-    LRModelMain.test_best_model()
+    best_lr, score_lr = LRModelMain.hyper_parameter_tuning()
+    # LRModelMain.test_best_model()
 
     print("KNN")
     KNNModelMain = KNNModel(x_train, x_test, y_train, y_test)
-    KNNModelMain.hyper_parameter_tuning()
-    KNNModelMain.test_best_model()
+    best_knn, score_knn = KNNModelMain.hyper_parameter_tuning()
+    # KNNModelMain.test_best_model()
+
+    print("Random forest")
+    RFModelMain = RandomForest(x_train, x_test, y_train, y_test)
+    best_rf, score_rf = RFModelMain.hyper_parameter_tuning()
+    # RFModelMain.test_best_model()
+
+    # Create and evaluate the weighted ensemble
+    print("Creating Weighted Ensemble")
+    ensemble = create_weighted_ensemble(x_train, y_train, best_xgb, best_lr, best_knn, best_rf, score_xgb, score_lr,
+                                        score_knn, score_rf)
+    ensemble_predictions = ensemble.predict(x_test)
+    ensemble_accuracy = accuracy_score(y_test, ensemble_predictions)
+    print(f'Ensemble Accuracy: {ensemble_accuracy:.4f}')
+
+
+def create_weighted_ensemble(x_train, y_train, best_xgb, best_lr, best_knn, best_rf, score_xgb, score_lr,
+                             score_knn, score_rf):
+    # Use provided best models and their scores to create ensemble
+    models = [
+        ('xgb', best_xgb, score_xgb),
+        ('lr', best_lr, score_lr),
+        ('knn', best_knn, score_knn),
+        ('rf', best_rf, score_rf)
+    ]
+
+    total_score = sum(score for _, _, score in models)
+    weights = [score / total_score for _, _, score in models]
+
+    ensemble = VotingClassifier(estimators=[(name, model) for name, model, _ in models], voting='soft', weights=weights)
+    ensemble.fit(x_train, y_train)
+    return ensemble
 
 
 if __name__ == "__main__":
     main()
-
 
 '''
 results- 
@@ -69,9 +100,13 @@ Best model saved as best_knn_model.pkl
 Accuracy on test with best paras : 0.7009
 F1 Score on test with best paras : 0.6943
 
+Random forest
+Fitting 10 folds for each of 180 candidates, totalling 1800 fits
+Best F1 Score: 0.7350 with parameters: {'max_depth': 10, 'min_samples_leaf': 10, 'n_estimators': 100}
+Creating Weighted Ensemble
+Ensemble Accuracy: 0.7371
+
 '''
-
-
 
 '''for normalized data
     handler = DataHandler('/Users/akanksha/Desktop/534/GP/Team9_CS534/cardio_cleaned.csv')
