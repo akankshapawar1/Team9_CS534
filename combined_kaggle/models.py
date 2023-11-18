@@ -99,7 +99,7 @@ class LRModel:
         return best_model, best_score
 
     def test_best_model(self):
-        model_path = 'best_logistic_regression_model.pkl'
+        model_path = 'saved_models/best_logistic_regression_model.pkl'
         loaded_model = load(model_path)
         # predictions = loaded_model.predict(self.x_test[['age', 'ap_hi', 'ap_lo', 'cholesterol', 'gluc', 'smoke',
         # 'active']])
@@ -148,7 +148,7 @@ class KNNModel:
         return best_model, best_score
 
     def test_best_model(self):
-        model_path = 'best_knn_model.pkl'
+        model_path = 'saved_models/best_knn_model.pkl'
         loaded_model = load(model_path)
         predictions = loaded_model.predict(self.x_test)
 

@@ -5,7 +5,7 @@ from models import XGBoostModel, LRModel, KNNModel, RandomForest
 
 
 def main():
-    handler = DataHandler('/Users/akanksha/Desktop/534/GP/Team9_CS534/data/cardio_train.csv')
+    handler = DataHandler('/data/kaggle/cardio_train.csv')
     x_train, x_test, y_train, y_test = handler.train_test_split()
 
     print("XGBoost")
