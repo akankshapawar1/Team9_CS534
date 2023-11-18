@@ -1,6 +1,6 @@
 1. Add baseline prediction
-2. Check KNN model. Lowest accuracy out of all.
-3. Roman or Stacked
+2. Check KNN model. Lowest accuracy out of all - 77
+3. Roman
 
 Categorical columns -
 

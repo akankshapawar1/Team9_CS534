@@ -1,4 +1,5 @@
-from sklearn.ensemble import VotingClassifier
+from sklearn.ensemble import VotingClassifier, StackingClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix, accuracy_score, roc_curve, roc_auc_score, classification_report, f1_score
 import matplotlib.pyplot as plt
 from data_handler import DataHandler
@@ -49,14 +50,31 @@ def main():
     print(f'Classification report: \n{ensemble_report}')
 
     # Plot ROC curve
-    plt.figure(figsize=(8, 6))
+    '''plt.figure(figsize=(8, 6))
     plt.plot(fpr, tpr, linestyle='-', linewidth=2, label=f'ROC Curve (AUC = {ensemble_roc_auc:.4f})')
     plt.plot([0, 1], [0, 1], linestyle='--', linewidth=2, color='gray', label='Random Guess')
     plt.xlabel('False Positive Rate (FPR)')
     plt.ylabel('True Positive Rate (TPR)')
     plt.title('Receiver Operating Characteristic (ROC) Curve')
     plt.legend()
-    plt.show()
+    plt.show()'''
+
+    print("Creating Stacked Ensemble:")
+    stacked_ensemble = create_stacked_ensemble(x_train, y_train, best_xgb, best_lr, best_knn, best_rf)
+    stacked_ensemble_predictions = stacked_ensemble.predict(x_test)
+    stacked_ensemble_accuracy = accuracy_score(y_test, stacked_ensemble_predictions)
+    stacked_ensemble_f1 = f1_score(y_test, stacked_ensemble_predictions, average='binary')
+    stacked_ensemble_conf = confusion_matrix(y_test, stacked_ensemble_predictions)
+    stacked_ensemble_report = classification_report(y_test, stacked_ensemble_predictions)
+    stacked_y_pred_prob = stacked_ensemble.predict_proba(x_test)[:, 1]
+    fpr, tpr, thresholds = roc_curve(y_test, stacked_y_pred_prob)
+    stacked_ensemble_roc_auc = roc_auc_score(y_test, stacked_y_pred_prob)
+    print('Scores on Stacked Ensemble: ')
+    print(f'Ensemble Accuracy: {stacked_ensemble_accuracy:.4f}')
+    print(f'F1 Score: {stacked_ensemble_f1:.4f}')
+    print(f'ROC Score: {stacked_ensemble_roc_auc:.4f}')
+    print(f'Confusion matrix : \n{stacked_ensemble_conf}')
+    print(f'Classification report: \n{stacked_ensemble_report}')
 
 
 def create_weighted_ensemble(x_train, y_train, best_xgb, best_lr, best_knn, best_rf, score_xgb, score_lr,
@@ -77,6 +95,26 @@ def create_weighted_ensemble(x_train, y_train, best_xgb, best_lr, best_knn, best
     return ensemble
 
 
+def create_stacked_ensemble(x_train, y_train, best_xgb, best_lr, best_knn, best_rf):
+    # Define base models
+    base_models = [
+        ('xgb', best_xgb),
+        ('lr', best_lr),
+        ('knn', best_knn),
+        ('rf', best_rf)
+    ]
+
+    # Choose a meta-model
+    meta_model = LogisticRegression()
+
+    # Create the stacked ensemble
+    stacked_ensemble = StackingClassifier(estimators=base_models, final_estimator=meta_model, cv=5)
+
+    # Fit the ensemble on the training data
+    stacked_ensemble.fit(x_train, y_train)
+
+    return stacked_ensemble
+
+
 if __name__ == "__main__":
     main()
-

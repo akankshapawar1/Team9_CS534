@@ -32,7 +32,7 @@ class XGBoostModel:
             print(f"Fold {i + 1} F1 Score: {score:.4f}")
         print(f"Average F1 Score: {f1_scores.mean():.4f} (+/- {f1_scores.std() * 2:.4f})")"""
 
-    def hyperparameter_tuning(self, k=10):
+    def hyperparameter_tuning(self, k=5):
         param_grid = {
             'max_depth': [3, 4, 5],
             'subsample': [0.6, 0.8, 1.0],
@@ -97,7 +97,7 @@ class LRModel:
         self.x_test = x_test
         self.y_test = y_test
 
-    def hyperparameter_tuning(self, k=10):
+    def hyperparameter_tuning(self, k=5):
         param_grid = {
             'solver': ['liblinear'],
             'penalty': ['l2'],
@@ -160,7 +160,7 @@ class KNNModel:
 
         knn = KNeighborsClassifier()
 
-        grid_search = GridSearchCV(knn, param_grid, scoring=make_scorer(f1_score, average=average_method), cv=10,
+        grid_search = GridSearchCV(knn, param_grid, scoring=make_scorer(f1_score, average=average_method), cv=5,
                                  verbose=1, n_jobs=-1)
         '''scoring = {'accuracy': make_scorer(accuracy_score),
                    'f1_score': make_scorer(f1_score, average=average_method, zero_division=1)}
@@ -219,7 +219,7 @@ class RandomForest:
 
         grid_search = GridSearchCV(estimator=rf,
                                    param_grid=params,
-                                   cv=10,
+                                   cv=5,
                                    n_jobs=-1, verbose=1, scoring="accuracy")
 
         grid_search.fit(self.x_train, self.y_train)
